@@ -1,4 +1,5 @@
 import json
+import bcrypt
 ######################################
 from flask import Flask, request, jsonify
 from yaml import load, dump
@@ -55,7 +56,7 @@ class Login(Resource):
         cur = mysql.connection.cursor()
         u_type = args.type
         email = args.email
-        passw_in = args.password
+        password = args.password.encode("utf-8")
         stmt = "SELECT * FROM users WHERE email='%s';"
         if u_type == "admin":
             stmt = "SELECT * FROM admins WHERE email='%s';"
@@ -63,11 +64,11 @@ class Login(Resource):
         rs = cur.fetchone()
         cur.close()
         if rs:
-            password = rs['password']
+            hashed = rs['password'].encode("utf-8")
             success = False
             jsonStr = json.dumps(rs, indent=1, sort_keys=True, default=str)
             user = json.loads(jsonStr)
-            if passw_in == password:
+            if bcrypt.checkpw(password, hashed):
                 success = True
                 return { "success": success, "user": user }
             else:
@@ -87,7 +88,10 @@ class Register(Resource):
         cur = mysql.connection.cursor()
         name = args.name
         email = args.email
-        password = args.password
+        # encode password as byte string
+        password = args.password.encode("utf-8")
+        # hash password using bcrypt
+        hashed = bcrypt.hashpw(password, bcrypt.gensalt())
         # check if user aleready exists
         stmt = "SELECT * FROM users WHERE email='%s';"
         cur.execute(stmt % email)
@@ -96,7 +100,7 @@ class Register(Resource):
             return { "success": False, "message": "User already exists!" }, 400
         # if not create user
         stmt = "INSERT INTO users(name, email, password) VALUES(%s, %s, %s);"
-        data = (name, email, password)
+        data = (name, email, hashed)
         rs = cur.execute(stmt, data)
         mysql.connection.commit()
         cur.close()

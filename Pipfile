@@ -11,6 +11,7 @@ flask-mysqldb = "*"
 pyyaml = "*"
 flask-cors = "*"
 datetime = "*"
+bcrypt = "*"
 
 [dev-packages]
 

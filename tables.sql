@@ -2,7 +2,7 @@ CREATE TABLE `agromate_db`.`users`(
     `u_id` INT NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(150) NOT NULL,
     `email` VARCHAR(100) NOT NULL,
-    `password` VARCHAR(30) NOT NULL,
+    `password` CHAR(60) NOT NULL,
     `created_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `status` INT NOT NULL,
     PRIMARY KEY(`u_id`)
@@ -12,7 +12,7 @@ CREATE TABLE `agromate_db`.`admins`(
     `a_id` INT NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(150) NOT NULL,
     `email` VARCHAR(100) NOT NULL,
-    `password` VARCHAR(30) NOT NULL,
+    `password` CHAR(60) NOT NULL,
     `created_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `status` INT NOT NULL,
     PRIMARY KEY(`a_id`)
