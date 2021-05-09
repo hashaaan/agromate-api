@@ -57,14 +57,22 @@ class Users(Resource):
         cur.close()
         return rv
 
-class User(Resource):
+class AuthUser(Resource):
     @token_required
-    def get(self, user_id):
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users where u_id=%d;" % user_id )
-        rs = cur.fetchall()
-        cur.close()
-        return rs
+    def get(self):
+        token = request.headers.get('token')
+        data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        if data:
+            email = data['email']
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT * FROM users where email='%s';" % email )
+            rs = cur.fetchone()
+            cur.close()
+            if rs:
+                rs.pop('password')
+                return rs
+        
+        return {'success': False, 'message': 'No user found!'}, 400
 
 # Login
 login_args = reqparse.RequestParser()
@@ -94,7 +102,7 @@ class Login(Resource):
             user = json.loads(jsonStr)
             if bcrypt.checkpw(password, hashed):
                 success = True
-                token = jwt.encode({'user': email, 'exp': datetime.utcnow() + timedelta(minutes=60)}, app.config['SECRET_KEY'])
+                token = jwt.encode({'email': email, 'exp': datetime.utcnow() + timedelta(minutes=60)}, app.config['SECRET_KEY'])
                 return {'success': success, 'user': user, 'token': token}
             else:
                 return {'success': success, 'message': 'Invalid email address or password!'}, 401
@@ -254,7 +262,6 @@ class Messages(Resource):
 
 # Define API routes
 api.add_resource(Users, "/api/v1/users/")
-api.add_resource(User, "/api/v1/users/<int:user_id>")
 api.add_resource(Conversations, "/api/v1/conversations")
 api.add_resource(AdminConvo, "/api/v1/conversations/admin/<int:admin_id>")
 api.add_resource(UserConvo, "/api/v1/conversations/user/<int:user_id>")
@@ -262,6 +269,7 @@ api.add_resource(Messages, "/api/v1/messages/<int:c_id>")
 # Auth routes
 api.add_resource(Login, "/api/v1/auth/login")
 api.add_resource(Register, "/api/v1/auth/register")
+api.add_resource(AuthUser, "/api/v1/auth/user")
 
 # Define index route
 @app.route('/')
