@@ -1,9 +1,11 @@
 import json
 import bcrypt
+import jwt
 ######################################
 from flask import Flask, request, jsonify
 from yaml import load, dump
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import wraps
 try:
     from flask_restful import Api, Resource, reqparse
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -24,11 +26,30 @@ app.config['MYSQL_USER'] = db['mysql_user']
 app.config['MYSQL_PASSWORD'] = db['mysql_password']
 app.config['MYSQL_DB'] = db['mysql_db']
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['SECRET_KEY'] = 'agromate'
 
 mysql = MySQL(app)
 api = Api(app)
 
+# check if auth token is valid
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('token')
+        if not token:
+            return {'message': 'Auth token is missing!'}, 403
+        
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        except:
+            return {'message': 'Auth token is invalid!'}, 403
+
+        return f(*args, **kwargs)
+
+    return decorated
+
 class Users(Resource):
+    @token_required
     def get(self):
         cur = mysql.connection.cursor()
         cur.execute("SELECT * FROM users")
@@ -37,6 +58,7 @@ class Users(Resource):
         return rv
 
 class User(Resource):
+    @token_required
     def get(self, user_id):
         cur = mysql.connection.cursor()
         cur.execute("SELECT * FROM users where u_id=%d;" % user_id )
@@ -66,14 +88,17 @@ class Login(Resource):
         if rs:
             hashed = rs['password'].encode("utf-8")
             success = False
+            #remove password from return obj
+            rs.pop('password')
             jsonStr = json.dumps(rs, indent=1, sort_keys=True, default=str)
             user = json.loads(jsonStr)
             if bcrypt.checkpw(password, hashed):
                 success = True
-                return { "success": success, "user": user }
+                token = jwt.encode({'user': email, 'exp': datetime.utcnow() + timedelta(minutes=60)}, app.config['SECRET_KEY'])
+                return {'success': success, 'user': user, 'token': token}
             else:
-                return { "success": success, "message": "Invalid email address or password!" }, 400
-        return {"success": False, "message": "Invalid email address or password!"}, 400
+                return {'success': success, 'message': 'Invalid email address or password!'}, 401
+        return {'success': False, 'message': 'Invalid email address or password!'}, 401
 
 # Register
 reg_args = reqparse.RequestParser()

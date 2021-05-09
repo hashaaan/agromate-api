@@ -4,14 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-flask = "*"
-flask-restful = "*"
+Flask = "*"
+Flask-RESTful = "*"
 python-dotenv = "*"
 flask-mysqldb = "*"
 pyyaml = "*"
 flask-cors = "*"
 datetime = "*"
 bcrypt = "*"
+pyjwt = "*"
 
 [dev-packages]
 
